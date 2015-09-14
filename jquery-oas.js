@@ -1,8 +1,7 @@
 /**
  * plugin to insert responsive oas banners on demand
  *
- * on demand means that you don't need to load it in a separated iframe or
- * stop the page load while the banner is loading or any other weird trick.
+ * on demand means that you don't need to stop the page load while the banner is loading
  * the banner is loaded whenever you initialize the plugin
  *
  * responsive because it will use media queries to decides which banners to load
@@ -37,32 +36,56 @@
 		var url = options.url + options.sitepage + '/1' + r + '@' + listpos.join() + '?' + '';
 		$.getScript(url).done(function(script, textStatus) {
 			$this.each(function(index, element) {
-				// Here document.write is overwritten so the banner is not directly written in the document
-				// and is inserted in the element that should contain the banner
+				var $element = $(this);
+				var pos = $element.data('oas-pos');
+				var useIframe = $element.data('oas-use-iframe');
+
+				// Here document.write function is overwritten
+				// so the banner is not directly written in the document
+				// and is inserted later, in the element/iframe that should contain the banner
+				// the code is stored in theCode
 				// we havent tested it with document.writeln but it should work too
 				var originalDocumentWrite = document.write;
-				var $element = $(this);
+				var theCode = '';
 				document.write = function(code) {
-					$element.append(code);
-					// this code handles when the banner image is loaded
-					// this won't be triggered if the banner is a flash
-					$element.find('img:not([src*=empty])').on('load', function(e) {
-						$element.trigger('loaded');
-					});
+					theCode += code
 				}
-
-				// The position name is read from the element
-				var pos = $element.data('oas-pos');
-
-				// The banner is now written
+				// The banner is now written to theCode
 				OAS_RICH(pos);
+
 				// document.write is restored
 				document.write = originalDocumentWrite;
 
-				// If the banner didnt load, we fire an event to let you decide what to do
-				if($element.find('img').width() == 1) {
-					// this code communicates when the banner is empty
-					$element.trigger('is-empty');
+				var checkBanner = function($emptyImage, $element, x) {
+						if ($emptyImage.size() == 1 && $emptyImage.width() == 1) {
+							// this code communicates when the banner is empty
+							$element.trigger('is-empty');
+						} else {
+							// empty image is not present, something was loaded
+							$element.trigger('load', x);
+						}
+				}
+
+				if (useIframe) {
+					theCode = '<!DOCTYPE html><html><head></head><body style="margin:0;">' + theCode + '</body></html>';
+					var x = document.createElement("IFRAME");
+					x.scrolling = 'no';
+					x.style.height = 0;
+					x.style.width = 0;
+					x.style.border = 'none';
+					x.srcdoc = theCode;
+					$element.append(x);
+
+					$(x).on('load', function() {
+						// this code handles when the banner is loaded
+						$emptyImage = $(x.contentWindow.document).find('img[src*=empty]');
+						checkBanner($emptyImage, $element, x);
+					});
+				} else {
+					$element.append(theCode);
+					// this code handles when the banner is loaded
+					$emptyImage = $element.find('img[src*=empty]');
+					checkBanner($emptyImage, $element, undefined);
 				}
 
 				// The banner link target attr is forced
@@ -70,6 +93,9 @@
 					$element.find('a').attr('target', options.target);
 				}
 			});
+
+			// An event is now fired, so other logic can be called
+			$this.trigger('ready');
 		});
 		return this;
 	};
