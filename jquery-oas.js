@@ -68,13 +68,21 @@
 
 				if (useIframe) {
 
+					// some of this code was stolen from https://github.com/jugglinmike/srcdoc-polyfill
 					var x = document.createElement("IFRAME");
+					var supportsSrcdoc = !!("srcdoc" in x);
 					x.scrolling = 'no';
-					x.style.height = 0;
-					x.style.width = 0;
 					x.style.border = 'none';
 					content = '<!DOCTYPE html><html><body style="margin:0;">' + content + '</body></html>';
-					x.srcdoc = content;
+					x.setAttribute("srcdoc", content);
+
+					if (!supportsSrcdoc) {
+						// The value returned by a script-targeted URL will be used as
+						// the iFrame's content. Create such a URL which returns the
+						// iFrame element's `srcdoc` attribute.
+						var jsUrl = "javascript: window.frameElement.getAttribute('srcdoc');";
+						x.setAttribute("src", jsUrl);
+					}
 					$element.append(x);
 
 					$(x).on('load', function() {
