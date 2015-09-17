@@ -33,7 +33,7 @@
 
 		// Here we build the url
 		var r = String(Math.random()).substring (2, 11);
-		var url = options.url + options.sitepage + '/1' + r + '@' + listpos.join() + '?' + '';
+		var url = options.url + options.sitepage + '/1' + r + '@' + listpos.join() + '?' + options.oasQuery;
 		$.getScript(url).done(function(script, textStatus) {
 			$this.each(function(index, element) {
 				var $element = $(this);
@@ -43,37 +43,38 @@
 				// Here document.write function is overwritten
 				// so the banner is not directly written in the document
 				// and is inserted later, in the element/iframe that should contain the banner
-				// the code is stored in theCode
+				// the code is stored in content
 				// we havent tested it with document.writeln but it should work too
 				var originalDocumentWrite = document.write;
-				var theCode = '';
+				var content = '';
 				document.write = function(code) {
-					theCode += code
+					content += code
 				}
-				// The banner is now written to theCode
+				// The banner is now written to content
 				OAS_RICH(pos);
 
 				// document.write is restored
 				document.write = originalDocumentWrite;
 
 				var checkBanner = function($emptyImage, $element, x) {
-						if ($emptyImage.size() == 1 && $emptyImage.width() == 1) {
-							// this code communicates when the banner is empty
-							$element.trigger('is-empty');
-						} else {
-							// empty image is not present, something was loaded
-							$element.trigger('load', x);
-						}
+					if ($emptyImage.size() == 1 && $emptyImage.width() == 1) {
+						// this code communicates when the banner is empty
+						$element.trigger('is-empty');
+					} else {
+						// empty image is not present, something was loaded
+						$element.trigger('load', x);
+					}
 				}
 
 				if (useIframe) {
-					theCode = '<!DOCTYPE html><html><head></head><body style="margin:0;">' + theCode + '</body></html>';
+
 					var x = document.createElement("IFRAME");
 					x.scrolling = 'no';
 					x.style.height = 0;
 					x.style.width = 0;
 					x.style.border = 'none';
-					x.srcdoc = theCode;
+					content = '<!DOCTYPE html><html><body style="margin:0;">' + content + '</body></html>';
+					x.srcdoc = content;
 					$element.append(x);
 
 					$(x).on('load', function() {
@@ -82,7 +83,7 @@
 						checkBanner($emptyImage, $element, x);
 					});
 				} else {
-					$element.append(theCode);
+					$element.append(content);
 					// this code handles when the banner is loaded
 					$emptyImage = $element.find('img[src*=empty]');
 					checkBanner($emptyImage, $element, undefined);
@@ -102,6 +103,7 @@
 
 	$.fn.oas.defaults = {
 		target: false,
-		sitepage: window.location.hostname + window.location.pathname
+		sitepage: window.location.hostname + window.location.pathname,
+		oasQuery: ''
 	};
 })(jQuery);
